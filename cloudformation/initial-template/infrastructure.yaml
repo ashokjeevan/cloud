@@ -1,0 +1,27 @@
+Parameters:
+  DbMasterUsername:
+    Description: Enter master dbUsername
+    Type: String
+  DbMasterPassword:
+    Description: Enter master db password
+    Type: String
+Resources:
+  DB:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBInstanceClass: db.t2.micro
+      DBName: wordpress
+      Engine: MySQL
+      MasterUsername: !Ref DbMasterUsername
+      MasterUserPassword: !Ref DbMasterPassword
+      AllocatedStorage: 5
+      StorageType: gp2
+  EC2:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: ami-0f75c2980c6a5851d
+      InstanceType: t2.micro
+  S3:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: wordpress-97980123
