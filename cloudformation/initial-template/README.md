@@ -1,5 +1,5 @@
 This template takes two parameters: Db username and Db master password
 
-The AMI specified is for the EC2 instance is for the Canada region
+User can choose the instance size befoe creation: SMALL, MEDIUM or LARGE.
 
-The db and the EC2 instances are of t2.micro. This can be used in the free tier
+The AMI specified is for the EC2 instance is for the Canada region
