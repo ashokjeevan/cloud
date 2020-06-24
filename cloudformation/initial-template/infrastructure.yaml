@@ -1,10 +1,14 @@
 Parameters:
-  DbMasterUsername:
-    Description: Enter master dbUsername
+  DbName:
+    Description: Enter db name
     Type: String
-  DbMasterPassword:
+  DatabaseUser:
+    Type: String
+    Default: wordpress
+  DatabasePassword:
     Description: Enter master db password
     Type: String
+    NoEcho: True
   InstanceTypeSize:
     Description: Select instance size
     Type: String
@@ -13,6 +17,9 @@ Parameters:
      - SMALL
      - MEDIUM
      - LARGE
+  KeyPairForEC2:
+    Description: Existing KeyPair name
+    Type: 'AWS::EC2::KeyPair::KeyName'
 
 Mappings:
   RegionMap:
@@ -36,10 +43,10 @@ Resources:
     Type: 'AWS::RDS::DBInstance'
     Properties:
       DBInstanceClass: !FindInMap [InstanceSize, !Ref InstanceTypeSize, DB]
-      DBName: wordpress
+      DBName: !Ref DbName
       Engine: MySQL
-      MasterUsername: !Ref DbMasterUsername
-      MasterUserPassword: !Ref DbMasterPassword
+      MasterUsername: !Ref DatabaseUser
+      MasterUserPassword: !Ref DatabasePassword
       AllocatedStorage: 5
       StorageType: gp2
   EC2:
@@ -47,5 +54,23 @@ Resources:
     Properties:
       ImageId: !FindInMap [RegionMap, !Ref 'AWS::Region', AMZNLINUX]
       InstanceType: !FindInMap [InstanceSize, !Ref InstanceTypeSize, EC2]
+      KeyName: !Ref KeyPairForEC2
+      UserData:
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash
+            yum install httpd php mysql php-mysql -y
+            yum update -y
+            chkconfig httpd on
+            service httpd start
+            cd /var/www/html
+            wget https://wordpress.org/latest.tar.gz
+            tar -zxvf latest.tar.gz --strip 1
+            rm latest.tar.gz
+            cp wp-config-sample.php wp-config.php
+            sed -i 's/database_name_here/${DbName}/g' wp-config.php
+            sed -i 's/localhost/${DB.Endpoint.Address}/g' wp-config.php
+            sed -i 's/username_here/${DatabaseUser}/g' wp-config.php
+            sed -i 's/password_here/${DatabasePassword}/g' wp-config.php
   S3:
     Type: 'AWS::S3::Bucket'
