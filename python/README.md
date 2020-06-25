@@ -1,0 +1,1 @@
+This python file shows the system related information using psutil and platform
