@@ -1,10 +1,16 @@
 from flask import Flask, redirect, url_for, render_template
 import requests, json
+import boto3
 
 app = Flask(__name__)
+ssm = boto3.client('ssm', region_name='ca-central-1')
 
 city = ''
-weatherApiKey = 'xxxxx'
+
+weatherApiKey = ssm.get_parameter(Name='devWeatherApiKey')['Parameter']['Value']
+
+print('WEATHER API KEY: ', weatherApiKey)
+
 weatherBaseUrl = 'http://api.openweathermap.org/data/2.5/weather'
 
 @app.route("/")
