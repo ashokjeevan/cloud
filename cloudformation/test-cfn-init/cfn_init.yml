@@ -1,0 +1,42 @@
+Parameters:
+  LatestAmiId :
+    Type : 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: ‘/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2’
+  InstanceTypeSize: 
+    Description: Select instance size
+    Type: String
+    Default: SMALL
+    AllowedValues:
+     - SMALL
+     - MEDIUM
+     - LARGE
+  KeyPairForEC2:
+    Description: Existing KeyPair name
+    Type: 'AWS::EC2::KeyPair::KeyName'
+Resources:
+  EC2:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref 'AWS::Region', AMZNLINUX]
+      InstanceType: !FindInMap [InstanceSize, !Ref InstanceTypeSize, EC2]
+      KeyName: !Ref KeyPairForEC2
+      UserData:
+        "Fn::Base64":
+          !Sub: |
+            #!/bin/bash
+            yum update -y aws-cfn-bootstrap
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2 --configsets
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              httpd: []
+              php: []
+              mysql: []
+          services:
+            sysvinit:
+              httpd:
+                enabled: "true"
+                ensureRunning: "true"
+                
