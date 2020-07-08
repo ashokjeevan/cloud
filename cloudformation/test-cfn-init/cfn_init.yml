@@ -1,7 +1,7 @@
 Parameters:
   LatestAmiId :
     Type : 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: ‘/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2’
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
   InstanceTypeSize: 
     Description: Select instance size
     Type: String
@@ -13,30 +13,83 @@ Parameters:
   KeyPairForEC2:
     Description: Existing KeyPair name
     Type: 'AWS::EC2::KeyPair::KeyName'
+  SampleString:
+    Type: String
+    Default: test
+
+Mappings:
+  InstanceSize:
+    SMALL:
+      'EC2': 't2.micro'
+    MEDIUM:
+      'EC2': 't2.small'
+    LARGE:
+      'EC2': 't2.medium'
+
 Resources:
   EC2:
     Type: 'AWS::EC2::Instance'
-    Properties:
-      ImageId: !FindInMap [RegionMap, !Ref 'AWS::Region', AMZNLINUX]
-      InstanceType: !FindInMap [InstanceSize, !Ref InstanceTypeSize, EC2]
-      KeyName: !Ref KeyPairForEC2
-      UserData:
-        "Fn::Base64":
-          !Sub: |
-            #!/bin/bash
-            yum update -y aws-cfn-bootstrap
-            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2 --configsets
     Metadata:
       AWS::CloudFormation::Init:
-        config:
+        configSets:
+          installhttpd:
+            - "configure_cfn"
+            - "install_httpd"
+        configure_cfn:
+          files:
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.EC2.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2 --configsets wordpress --region ${AWS::Region}
+              mode: "000400"
+              owner: root
+              group: root
+            /etc/cfn/cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+                verbose=true
+                interval=5
+              mode: "000400"
+              owner: root
+              group: root
+            /var/www/html/index2.html:
+              content: !Ref SampleString
+          services:
+            sysvinit:
+              cfn-hup:
+                enabled: "true"
+                ensureRunning: "true"
+                files:
+                  - "/etc/cfn/cfn-hup.conf"
+                  - "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+        install_httpd:  
           packages:
             yum:
               httpd: []
-              php: []
-              mysql: []
-          services:
+          services: # tells which services to be enabled or disabled on launch
             sysvinit:
               httpd:
                 enabled: "true"
                 ensureRunning: "true"
-                
+          sources:
+            /var/www/html: "http://wordpress.org/latest.tar.gz"
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !FindInMap [InstanceSize, !Ref InstanceTypeSize, EC2]
+      KeyName: !Ref KeyPairForEC2
+      UserData:
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash
+            yum update -y aws-cfn-bootstrap 
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2 --configsets installhttpd --region ${AWS::Region}
+            yum -y update
+    
+Outputs:
+  EC2Ip:
+    Description: IP for the EC2 instance
+    Value: !Join ["", [!GetAtt EC2.PublicIp]]
