@@ -6,7 +6,7 @@ The latest AMI ID is being taken from the parameters section by:
 
 `
 LatestAmiId :
-    Type : 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Type : 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     
     Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
 `
